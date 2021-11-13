@@ -200,6 +200,7 @@ def train_sequential(
         ruleset='mante',
         seed=0,
         continue_after_target_reached=False, #if set to True, the training will continue for 50 more steps after reaching the target performance
+        continue_after_target_steps=50,
         ):
     '''Train the network sequentially.
 
@@ -279,6 +280,9 @@ def train_sequential(
 
         # Looping
         step_total = 0
+
+        after_target_reached_step_count=0
+        target_reached = False
         for i_rule_train, rule_train in enumerate(hp['rule_trains']):
             step = 0
 
@@ -318,7 +322,6 @@ def train_sequential(
             omega0 = [np.zeros(v.shape, dtype='float32') for v in v_anc0]
 
             # Keep training until reach max iterations
-            after_target_reached_step_count=0
             while 1:
             #while (step * hp['batch_size_train'] <=
             #       rule_train_iters[i_rule_train]):
@@ -336,16 +339,19 @@ def train_sequential(
                     print("time trained: "+str(day)+"D-"+str(hour)+"H-"+str(minute)+"M-"+str(second)+"S")
                     log['rule_now'].append(rule_train)
                     log = do_eval(sess, model, log, rule_train)
-                    if log['perf_avg'][-1] > model.hp['target_perf']:
+
+                    if log['perf_avg'][-1] > model.hp['target_perf'] and not target_reached:
                         print('Perf reached the target: {:0.2f}'.format(
                             hp['target_perf']))
-                        #if continue_after_target_reached:
-                        if continue_after_target_reached and i_rule_train+1 == len(hp['rule_trains']):#continue train only after the last set of rules
-                            after_target_reached_step_count+=1
-                            #if after_target_reached_step_count>10:
-                            if after_target_reached_step_count>50:
-                                break
+                        if i_rule_train+1 == len(hp['rule_trains']) and continue_after_target_reached:
+                            target_reached = True
                         else:
+                            break
+
+                    #if continue_after_target_reached #continue train only after the last set of rules
+                    if target_reached:
+                        after_target_reached_step_count+=1
+                        if after_target_reached_step_count>continue_after_target_steps:
                             break
 
                 # Training

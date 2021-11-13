@@ -205,6 +205,7 @@ def train(model_dir,
           load_dir=None,
           trainables=None,
           continue_after_target_reached=False, #if set to True, the training will continue for 50 more steps after reaching the target performance
+          continue_after_target_steps=50,
           ):
     """Train the network.
 
@@ -324,6 +325,7 @@ def train(model_dir,
         else:
             step = 0
         after_target_reached_step_count=0
+        target_reached = False
         gradient_list = []
         for i in range(4):
             gradient_list.append([])
@@ -344,14 +346,16 @@ def train(model_dir,
                     log = do_eval(sess, model, log, hp['rule_trains'])
                     #check if minimum performance is above target 
 
-                    if log['perf_min'][-1] > model.hp['target_perf']:
+                    if log['perf_min'][-1] > model.hp['target_perf'] and not target_reached:
                         print('Perf reached the target: {:0.2f}'.format(
                             hp['target_perf']))
                         if continue_after_target_reached:
-                            after_target_reached_step_count+=1
-                            if after_target_reached_step_count>50:
-                                break
+                            target_reached = True
                         else:
+                            break
+                    if target_reached:
+                        after_target_reached_step_count+=1
+                        if after_target_reached_step_count>continue_after_target_steps:
                             break
 
                 # Training

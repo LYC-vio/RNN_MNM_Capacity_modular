@@ -205,6 +205,7 @@ def train(model_dir,
           load_dir=None,
           trainables=None,
           continue_after_target_reached=False, #if set to True, the training will continue for 50 more steps after reaching the target performance
+          continue_after_target_steps=50,
           ):
     """Train the network.
 
@@ -323,7 +324,9 @@ def train(model_dir,
             step = int(log['trials'][-1]/hp['batch_size_train']) #continue from where the training stopped last time
         else:
             step = 0
+
         after_target_reached_step_count=0
+        target_reached = False
         while 1:#step * hp['batch_size_train'] <= max_steps:
             try:
                 # Validation
@@ -342,14 +345,16 @@ def train(model_dir,
                     #check if minimum performance is above target 
 
 
-                    if log['perf_min'][-1] > model.hp['target_perf']:
+                    if log['perf_min'][-1] > model.hp['target_perf'] and not target_reached:
                         print('Perf reached the target: {:0.2f}'.format(
                             hp['target_perf']))
                         if continue_after_target_reached:
-                            after_target_reached_step_count+=1
-                            if after_target_reached_step_count>50:
-                                break
+                            target_reached = True
                         else:
+                            break
+                    if target_reached:
+                        after_target_reached_step_count+=1
+                        if after_target_reached_step_count>continue_after_target_steps:
                             break
 
                 # Training
