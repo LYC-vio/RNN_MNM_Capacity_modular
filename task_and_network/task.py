@@ -61,6 +61,10 @@ rules_dict = \
         'Capacity_color_1_stims_white_stims_1s05s','Capacity_color_2_stims_white_stims_1s05s','Capacity_color_3_stims_white_stims_1s05s',\
             'Capacity_color_4_stims_white_stims_1s05s', #5-8 are not trained, just for test
             'Capacity_color_5_stims_white_stims_1s05s','Capacity_color_6_stims_white_stims_1s05s','Capacity_color_7_stims_white_stims_1s05s','Capacity_color_8_stims_white_stims_1s05s'],
+
+    'Capacity_stim1-10_clrwht_6tasks_1s05s':['overlap','zero_gap','gap','odr','odrd','gap500',] + ['Capacity_color_'+str(i+1)+'_stims_white_stims_1s05s' for i in range(10)],
+
+    'Capacity_stim1-5_clrwhtnrm_6tasks_1s05s':['overlap','zero_gap','gap','odr','odrd','gap500',] + ['Capacity_color_'+str(i+1)+'_stims_white_norm_stims_1s05s' for i in range(5)],
     
     'Capacity_stim1-5_clrwht_6tasks_1s05s_mx':['overlap','zero_gap','gap','odr','odrd','gap500',\
         'Capacity_color_1_stims_wht_stims_1s05s_mx','Capacity_color_2_stims_wht_stims_1s05s_mx','Capacity_color_3_stims_wht_stims_1s05s_mx',\
@@ -421,22 +425,24 @@ def test_init(config, mode, **kwargs):
 
     return trial
 
-
 # add by yichen
 def odr_(config, mode, anti_response, delay1_time, **kwargs):
     dt = config['dt']
     rng = config['rng']
-    if mode == 'random': # Randomly generate parameters
+    if 'random' in mode: # Randomly generate parameters
         batch_size = kwargs['batch_size']
 
         # A list of locations of stimuluss and on/off time
         stim_locs = rng.rand(batch_size)*2*np.pi
         stim_ons  = int(1000/dt)
         stim_offs = stim_ons + int(500/dt) #last for 0.5s
-        fix_offs = stim_offs + int(delay1_time/dt) #last for 1.5s
+        if '-' in mode:
+            fix_offs = stim_offs + int(float(mode.split('-')[1])/dt)
+        else:
+            fix_offs = stim_offs + int(delay1_time/dt)
         tdim     = fix_offs + int(500/dt)
         stim_mod  = 1
-    elif mode == 'test':
+    elif 'test' in mode:
         n_stim_loc, _ = batch_shape = config['n_eachring'], 16
         batch_size = np.prod(batch_shape)
         ind_stim_loc, _ = np.unravel_index(range(batch_size),batch_shape)
@@ -445,7 +451,10 @@ def odr_(config, mode, anti_response, delay1_time, **kwargs):
 
         stim_ons  = int(1000/dt)
         stim_offs = stim_ons + int(500/dt) #last for 0.5s
-        fix_offs = stim_offs + int(delay1_time/dt) #last for 1.5s
+        if '-' in mode:
+            fix_offs = stim_offs + int(float(mode.split('-')[1])/dt)
+        else:
+            fix_offs = stim_offs + int(delay1_time/dt) 
         tdim     = fix_offs + int(500/dt)
 
     else:
@@ -1488,7 +1497,7 @@ def generate_capacity_test_stim(sub_sample_num,stim_per_epoch,n_eachring,step,rn
     return stim1s,match_or_not
 
 def Capacity_color_(config, mode, delaytime, stim_per_epoch, \
-    white_stims=False, color_channel_num=3, delaytime2=None , add_mode='add', **kwargs):
+    white_stims=False, color_channel_num=3, delaytime2=None , add_mode='add', normalize_stims=False, **kwargs):
     #                delay1    delay2
     # ----------^^^^^-----^^^^^-----^^^^^
     #           stim1     stim2     choice
@@ -1536,6 +1545,40 @@ def Capacity_color_(config, mode, delaytime, stim_per_epoch, \
         
         devi_dist = np.zeros_like(stim1s)
         devi_dist[0,:] = match_or_not*np.pi
+
+        stim2s = (stim1s + devi_dist)%(2*np.pi)
+
+        #Timeline
+        stim1_ons  = int(1000/dt)
+        stim1_offs = stim1_ons + int(500/dt) #last for 0.5s
+
+        stim2_ons= stim1_offs+int(delaytime/dt) #delay
+        stim2_offs= stim2_ons+int(500/dt) # last for 0.5s
+
+        choice_ons= stim2_offs+int(delaytime2/dt) #delay
+
+        fix_offs = choice_ons
+        
+        tdim     = fix_offs + int(500/dt)
+        
+    elif mode == 'simple4stimtest':
+        
+        #Stimuli
+        stim1s = np.zeros((4,64))
+
+        stim1_temp = list()
+        for i in range(4):
+            stim1_temp += [(i*1/2*np.pi+i*2*np.pi/config['n_eachring'])%(2*np.pi),]*16
+        stim1_temp = np.array(stim1_temp)
+
+        for i in range(4):
+            stim1s[i] = (stim1_temp + i*1/2*np.pi)%(2*np.pi)
+
+        batch_size = 64
+        match_or_not = np.array(([0,]*8+[1,]*8)*4)
+        
+        devi_dist = np.zeros_like(stim1s)
+        devi_dist[0,:] = match_or_not*2*np.pi/config['n_eachring']*(-1)
 
         stim2s = (stim1s + devi_dist)%(2*np.pi)
 
@@ -1765,6 +1808,18 @@ def Capacity_color_(config, mode, delaytime, stim_per_epoch, \
             trial.add('stim', stim1s[i], ons=stim1_ons, offs=stim1_offs, mods=(1,)*color_channel_num,add_mode=add_mode)#RGB(white)
             trial.add('stim', stim2s[i], ons=stim2_ons, offs=stim2_offs, mods=(1,)*color_channel_num,add_mode=add_mode)#RGB(white)
 
+    if normalize_stims and white_stims: #do not need to normalize for the mode that separate stims to different rings
+        for it in range(batch_size):
+            for color in range(color_channel_num):
+                max_input1 = np.max(trial.x[stim1_ons: stim1_offs, it, 1+color*config['n_eachring']:1+(color+1)*config['n_eachring']])
+                if max_input1 != 0:
+                    trial.x[stim1_ons: stim1_offs, it, 1+color*config['n_eachring']:1+(color+1)*config['n_eachring']] /= max_input1
+                
+                max_input2 = np.max(trial.x[stim2_ons: stim2_offs, it, 1+color*config['n_eachring']:1+(color+1)*config['n_eachring']])
+                if max_input2 != 0:
+                    trial.x[stim2_ons: stim2_offs, it, 1+color*config['n_eachring']:1+(color+1)*config['n_eachring']] /= max_input2
+
+
     trial.add('choice', M_choice_loc, ons=choice_ons, mods=(1,0),add_mode=add_mode)#Red
     trial.add('choice', NM_choice_loc, ons=choice_ons, mods=(0,1),add_mode=add_mode)#Green
 
@@ -1849,6 +1904,28 @@ def Capacity_color_7_stims_white_stims_1s05s(config, mode, **kwargs):
 
 def Capacity_color_8_stims_white_stims_1s05s(config, mode, **kwargs):
     return Capacity_color_(config, mode, 1000, 8,delaytime2=500, white_stims=True ,**kwargs)
+
+def Capacity_color_9_stims_white_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 9,delaytime2=500, white_stims=True ,**kwargs)
+
+def Capacity_color_10_stims_white_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 10,delaytime2=500, white_stims=True ,**kwargs)
+
+#####################################################################################################
+def Capacity_color_1_stims_white_norm_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 1,delaytime2=500, white_stims=True ,normalize_stims=True, **kwargs)
+
+def Capacity_color_2_stims_white_norm_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 2,delaytime2=500, white_stims=True ,normalize_stims=True, **kwargs)
+
+def Capacity_color_3_stims_white_norm_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 3,delaytime2=500, white_stims=True ,normalize_stims=True, **kwargs)
+
+def Capacity_color_4_stims_white_norm_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 4,delaytime2=500, white_stims=True ,normalize_stims=True, **kwargs)
+
+def Capacity_color_5_stims_white_norm_stims_1s05s(config, mode, **kwargs):
+    return Capacity_color_(config, mode, 1000, 5,delaytime2=500, white_stims=True ,normalize_stims=True, **kwargs)
 
 ####################################################################################################
 
@@ -2558,6 +2635,14 @@ rule_mapping = {
                 'Capacity_color_6_stims_white_stims_1s05s':Capacity_color_6_stims_white_stims_1s05s,
                 'Capacity_color_7_stims_white_stims_1s05s':Capacity_color_7_stims_white_stims_1s05s,
                 'Capacity_color_8_stims_white_stims_1s05s':Capacity_color_8_stims_white_stims_1s05s,
+                'Capacity_color_9_stims_white_stims_1s05s':Capacity_color_9_stims_white_stims_1s05s,
+                'Capacity_color_10_stims_white_stims_1s05s':Capacity_color_10_stims_white_stims_1s05s,
+
+                'Capacity_color_1_stims_white_norm_stims_1s05s':Capacity_color_1_stims_white_norm_stims_1s05s,
+                'Capacity_color_2_stims_white_norm_stims_1s05s':Capacity_color_2_stims_white_norm_stims_1s05s,
+                'Capacity_color_3_stims_white_norm_stims_1s05s':Capacity_color_3_stims_white_norm_stims_1s05s,
+                'Capacity_color_4_stims_white_norm_stims_1s05s':Capacity_color_4_stims_white_norm_stims_1s05s,
+                'Capacity_color_5_stims_white_norm_stims_1s05s':Capacity_color_5_stims_white_norm_stims_1s05s,
 
                 'Capacity_color_1_stims_wht_stims_1s05s_mx':Capacity_color_1_stims_wht_stims_1s05s_mx,
                 'Capacity_color_2_stims_wht_stims_1s05s_mx':Capacity_color_2_stims_wht_stims_1s05s_mx,
@@ -2641,6 +2726,14 @@ rule_name    = {
                 'Capacity_color_6_stims_white_stims_1s05s':'Capacity color encoded, 6 white stimulus, D1:1s D2:0.5s',
                 'Capacity_color_7_stims_white_stims_1s05s':'Capacity color encoded, 7 white stimulus, D1:1s D2:0.5s',
                 'Capacity_color_8_stims_white_stims_1s05s':'Capacity color encoded, 8 white stimulus, D1:1s D2:0.5s',
+                'Capacity_color_9_stims_white_stims_1s05s':'Capacity color encoded, 9 white stimulus, D1:1s D2:0.5s',
+                'Capacity_color_10_stims_white_stims_1s05s':'Capacity color encoded, 10 white stimulus, D1:1s D2:0.5s',
+
+                'Capacity_color_1_stims_white_norm_stims_1s05s':'Capacity color encoded, 1 white norm stimulus, D1:1s D2:0.5s',
+                'Capacity_color_2_stims_white_norm_stims_1s05s':'Capacity color encoded, 2 white norm stimulus, D1:1s D2:0.5s',
+                'Capacity_color_3_stims_white_norm_stims_1s05s':'Capacity color encoded, 3 white norm stimulus, D1:1s D2:0.5s',
+                'Capacity_color_4_stims_white_norm_stims_1s05s':'Capacity color encoded, 4 white norm stimulus, D1:1s D2:0.5s',
+                'Capacity_color_5_stims_white_norm_stims_1s05s':'Capacity color encoded, 5 white norm stimulus, D1:1s D2:0.5s',
 
                 'Capacity_color_1_stims_wht_stims_1s05s_mx':'Capacity color encoded add by mx, 1 white stimulus, D1:1s D2:0.5s',
                 'Capacity_color_2_stims_wht_stims_1s05s_mx':'Capacity color encoded add by mx, 2 white stimulus, D1:1s D2:0.5s',
