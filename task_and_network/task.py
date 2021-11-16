@@ -1485,6 +1485,10 @@ def generate_capacity_test_stim(sub_sample_num,stim_per_epoch,n_eachring,step,rn
     possible_conditions = list()
     for e in it.combinations(list(range(sub_sample_num)), stim_per_epoch):
         possible_conditions.append(e)
+
+    possible_conditions = np.array(possible_conditions)
+    if len(possible_conditions) > 200:
+        possible_conditions = possible_conditions[np.random.choice(len(possible_conditions),200)]
     
     random_shift = rng.randint(0,stim_per_epoch,len(possible_conditions))
     for cond, shift in zip(possible_conditions,random_shift):
