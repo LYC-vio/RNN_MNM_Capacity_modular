@@ -1533,7 +1533,7 @@ def Capacity_color_(config, mode, delaytime, stim_per_epoch, \
         tdim     = fix_offs + int(500/dt)
 
     elif mode == 'test':
-        for i in range(9,4,-1): #9~5
+        for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
             if config['n_eachring']%i == 0 and i >= stim_per_epoch:
                 step = config['n_eachring']//i
                 sub_sample_num = i
@@ -1733,7 +1733,7 @@ def Capacity_color_(config, mode, delaytime, stim_per_epoch, \
         tdim     = fix_offs + int(500/dt)
 
     elif mode == 'move_one_loc':
-        for i in range(9,4,-1): #9~5
+        for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
             if config['n_eachring']%i == 0 and i >= stim_per_epoch:
                 step = config['n_eachring']//i
                 sub_sample_num = i
@@ -1994,7 +1994,7 @@ def Capacity_color_mix_uniform_(config, mode, stim_per_epoch, delay_time_bound=(
         tdim     = max_fix_off + int(500/dt)
 
     elif 'test' in mode:
-        for i in range(9,4,-1): #9~5
+        for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
             if config['n_eachring']%i == 0 and i >= stim_per_epoch:
                 step = config['n_eachring']//i
                 sub_sample_num = i
@@ -2161,7 +2161,7 @@ def Capacity_color_mix_uniform_(config, mode, stim_per_epoch, delay_time_bound=(
     #     tdim     = fix_offs + int(500/dt)
 
     # elif mode == 'move_one_loc':
-    #     for i in range(9,4,-1): #9~5
+    #     for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
     #         if config['n_eachring']%i == 0 and i >= stim_per_epoch:
     #             step = config['n_eachring']//i
     #             sub_sample_num = i
@@ -2346,7 +2346,7 @@ def Capacity_strength_(config, mode, delaytime, stim_per_epoch, fix_choice_loc=T
         tdim     = fix_offs + int(500/dt)
 
     elif mode == 'test':
-        for i in range(9,4,-1): #9~5
+        for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
             if config['n_eachring']%i == 0 and i >= stim_per_epoch:
                 step = config['n_eachring']//i
                 sub_sample_num = i
@@ -2483,7 +2483,7 @@ def Capacity_strength_mix_uniform_(config, mode, stim_per_epoch, delay_time_boun
         tdim     = max_fix_off + int(500/dt)
 
     elif 'test' in mode:
-        for i in range(9,4,-1): #9~5
+        for i in range(config['n_eachring']//2+1,stim_per_epoch-1,-1):
             if config['n_eachring']%i == 0 and i >= stim_per_epoch:
                 step = config['n_eachring']//i
                 sub_sample_num = i
